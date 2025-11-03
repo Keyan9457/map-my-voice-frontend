@@ -1,0 +1,37 @@
+.app-header {
+  background-color: #1a1a1a;
+  padding: 15px 20px;
+  text-align: center;
+  border-bottom: 2px solid #555;
+  width: 100%;
+  box-sizing: border-box; 
+  z-index: 10;
+  
+  /* --- ANIMATION --- */
+  /* We apply the 'fadeIn' animation, make it last 0.6s, 
+     use an 'ease-out' curve, and set it to 'backwards' 
+     so it starts invisible before the animation begins. */
+  animation: fadeIn 0.6s ease-out backwards;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.8em;
+  font-weight: 600;
+  color: #e0e0e0;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+/* --- KEYFRAMES --- */
+/* This defines the 'fadeIn' animation. 
+   It simply animates from 0% opacity to 100% opacity. */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
