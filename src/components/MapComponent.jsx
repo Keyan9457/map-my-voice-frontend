@@ -1,8 +1,22 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, ZoomControl, GeoJSON, useMap, LayersControl } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet.heat";
 
-// This helper component flies the map to a new location
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import {
+  MapContainer,
+  TileLayer,
+  ZoomControl,
+  GeoJSON,
+  useMap,
+  useMapEvents,
+  Marker,
+  Popup,
+  LayersControl
+} from "react-leaflet";
+
+
 function ChangeView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
@@ -11,123 +25,134 @@ function ChangeView({ center, zoom }) {
   return null;
 }
 
-// 1. Accept 'setFilters' as a prop
+function LocationPicker() {
+  useMapEvents({
+    click(e) {
+      window.dispatchEvent(
+        new CustomEvent("incident-location-selected", {
+          detail: { lat: e.latlng.lat, lng: e.latlng.lng }
+        })
+      );
+    }
+  });
+  return null;
+}
+
+function HeatmapLayer({ incidents }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!incidents || incidents.length === 0) return;
+
+    const points = incidents.map(i => [i.latitude, i.longitude, 0.9]);
+
+    const heat = L.heatLayer(points, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 12,
+    }).addTo(map);
+
+    return () => map.removeLayer(heat);
+  }, [incidents, map]);
+
+  return null;
+}
+
 const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters }) => {
+  const [incidents, setIncidents] = useState([]);
 
-  // Function to determine the color of a country based on its review score
-  const getColor = (score) => {
-    if (score === undefined) return '#808080'; // Gray
-    return score > 0.75 ? '#238b45' : // Dark Green
-           score > 0.5  ? '#74c476' : // Light Green
-           score > 0.25 ? '#fe9929' : // Orange
-                          '#d7301f';   // Red
-  };
+  useEffect(() => {
+    axios.get("http://127.0.0.1:8000/api/incidents/")
+      .then(res => setIncidents(res.data))
+      .catch(err => console.error("Error fetching incidents:", err));
+  }, []);
 
-  // Function that styles each individual country feature
+  const incidentIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/535/535239.png",
+    iconSize: [28, 28],
+  });
+
+  const getColor = (score) =>
+    score === undefined ? '#808080' :
+    score > 0.75 ? '#238b45' :
+    score > 0.5  ? '#74c476' :
+    score > 0.25 ? '#fe9929' :
+    '#d7301f';
+
   const style = (feature) => {
-    const countryName = feature.properties.name;
-    const countryData = mapData ? mapData[countryName] : undefined;
-    const score = countryData ? countryData.score : undefined;
-    return { 
-      fillColor: getColor(score), 
-      weight: 1, 
-      opacity: 1, 
-      color: 'white', 
-      dashArray: '3', 
-      fillOpacity: 0.7 
+    const name = feature.properties.name;
+    const score = mapData?.[name]?.score;
+    return {
+      fillColor: getColor(score),
+      weight: 1,
+      opacity: 1,
+      color: 'white',
+      dashArray: '3',
+      fillOpacity: 0.7
     };
   };
 
-  // Function to highlight a country on hover
-  const highlightFeature = (e) => {
-    const layer = e.target;
-    layer.setStyle({
-      weight: 3,
-      color: '#FFFFFF',
-      dashArray: '',
-      fillOpacity: 0.8,
-    });
-    layer.bringToFront();
-  };
-
-  // Function to reset the highlight on mouse out
-  const resetHighlight = (e, feature) => {
-    // We must pass the feature to the style function
-    e.target.setStyle(style(feature));
-  };
-
-  // 2. This function now handles popups, hover, AND click events
   const onEachFeature = (feature, layer) => {
-    const countryName = feature.properties.name;
-    const countryData = mapData ? mapData[countryName] : null;
+    const name = feature.properties.name;
+    const data = mapData?.[name];
 
-    // Bind popup
-    if (countryData) {
-      layer.bindPopup(`<strong>${countryName}</strong><br/>Overall Rating: ${Math.round(countryData.score * 100)}% Good<br/>Total Reviews: ${countryData.total_reviews}`);
+    if (data) {
+      layer.bindPopup(
+        `<strong>${name}</strong><br/>Good Rating: ${Math.round(data.score * 100)}%<br/>Total Reviews: ${data.total_reviews}`
+      );
     } else {
-      layer.bindPopup(`<strong>${countryName}</strong><br/>No review data available.`);
+      layer.bindPopup(`<strong>${name}</strong><br/>No Data`);
     }
 
-    // Add event listeners
     layer.on({
-      mouseover: highlightFeature,
-      mouseout: (e) => resetHighlight(e, feature),
-      // 3. Add the click handler to filter by country
-      click: () => {
-        setFilters({ country: countryName });
-      }
+      click: () => setFilters({ country: name })
     });
   };
 
-  // Show the loading spinner
   if (isLoading || !geoJsonData) {
-    return (
-      <div className="loading-overlay">
-        <div className="spinner"></div>
-      </div>
-    );
+    return <div className="loading-overlay"><div className="spinner"></div></div>;
   }
 
   return (
-    <MapContainer 
-      center={location.center} 
-      zoom={location.zoom} 
-      style={{ height: '100%', width: '100%' }} 
-      zoomControl={false}
-      className="map-container"
-    >
+    <MapContainer center={location.center} zoom={location.zoom} style={{ height: '100%', width: '100%' }} zoomControl={false}>
       <ChangeView center={location.center} zoom={location.zoom} />
+      <LocationPicker />
       <ZoomControl position="topright" />
+
       <LayersControl position="topright">
-        <LayersControl.BaseLayer name="OpenStreetMap">
-          <TileLayer 
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' 
-          />
-        </LayersControl.BaseLayer>
-        
+
         <LayersControl.BaseLayer checked name="Satellite Imagery">
-          <TileLayer 
-            url='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' 
-            attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-          />
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
         </LayersControl.BaseLayer>
-        
-        <LayersControl.Overlay name="Review Data (Choropleth)">
-          {/* We must add a key here. When mapData changes, the key changes, forcing React to re-render the GeoJSON layer */}
-          {geoJsonData && mapData && (
-            <GeoJSON 
-              data={geoJsonData} 
-              style={style} 
-              onEachFeature={onEachFeature}
-              key={JSON.stringify(mapData)} // This key forces re-render on data change
-            />
-          )}
+
+        <LayersControl.BaseLayer name="OpenStreetMap">
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        </LayersControl.BaseLayer>
+
+        <LayersControl.Overlay checked name="Review Choropleth">
+          <GeoJSON data={geoJsonData} style={style} onEachFeature={onEachFeature} />
         </LayersControl.Overlay>
+
+        <LayersControl.Overlay checked name="Incident Pins">
+          <div>
+            {incidents.map((p) => (
+              <Marker key={p.id} position={[p.latitude, p.longitude]} icon={incidentIcon}>
+                <Popup>
+                  <strong>{p.theme}</strong><br />
+                  {p.report_type}<br />
+                  <em>{p.comment}</em>
+                </Popup>
+              </Marker>
+            ))}
+          </div>
+        </LayersControl.Overlay>
+
+        <LayersControl.Overlay name="Incident Density Heatmap">
+          <HeatmapLayer incidents={incidents} />
+        </LayersControl.Overlay>
+
       </LayersControl>
     </MapContainer>
   );
 };
 
 export default MapComponent;
-

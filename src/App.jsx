@@ -14,68 +14,57 @@ function App() {
     center: [20.5937, 78.9629],
     zoom: 5,
   });
+
   const [mapData, setMapData] = useState(null);
   const [geoJsonData, setGeoJsonData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [chartData, setChartData] = useState(null);
-  
-  // 1. Add new state to hold the active filters
-  // Example: { theme: 'Healthcare' } or { country: 'India' }
+
+  // Filters (example: { theme: "Healthcare" } or { timeframe: "7d" })
   const [filters, setFilters] = useState({});
 
-  // --- DATA FETCHING ---
-  
-  // 2. Modify this function to send filters to the API
-  const fetchAnalyticsData = (currentFilters) => {
-    // We only set loading to true on the very first load
+  // --- DATA FETCHING FUNCTION ---
+  const fetchAnalyticsData = (currentFilters = {}) => {
     if (!geoJsonData) {
-        setIsLoading(true);
+      setIsLoading(true); // Show loading only on first load
     }
 
-    // Create URL parameters from the filter object
-    // Example: { theme: 'Healthcare' } becomes "?theme=Healthcare"
     const params = new URLSearchParams(currentFilters).toString();
-    
-   Promise.all([
-  axios.get(`https://map-my-voice-backend.onrender.com/api/map-data/?${params}`),
-  axios.get(`https://map-my-voice-backend.onrender.com/api/chart-data/?${params}`)
-])
-    .then(([mapDataRes, chartDataRes]) => {
-      setMapData(mapDataRes.data);
-      setChartData(chartDataRes.data);
-    })
-    .catch(error => console.error("Error fetching analytics data:", error))
-    .finally(() => {
-      // Only stop the *initial* loading spinner
-      if (isLoading) setIsLoading(false);
-    });
+
+    Promise.all([
+      axios.get(`https://map-my-voice-backend.onrender.com/api/map-data/?${params}`),
+      axios.get(`https://map-my-voice-backend.onrender.com/api/chart-data/?${params}`)
+    ])
+      .then(([mapRes, chartRes]) => {
+        setMapData(mapRes.data);
+        setChartData(chartRes.data);
+      })
+      .catch(err => console.error("Error fetching analytics data:", err))
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
-  // 3. Add a new useEffect hook
-  // This hook watches for changes to the 'filters' state and re-fetches data
+  // Re-fetch analytics when filters change
   useEffect(() => {
-    console.log("Filters changed:", filters);
     fetchAnalyticsData(filters);
-  }, [filters]); // Re-run when 'filters' state changes
+  }, [filters]);
 
-  // This hook still runs only once to get the map boundaries
+  // Initial load: geojson + default analytics
   useEffect(() => {
     axios.get('/countries.json')
       .then((res) => setGeoJsonData(res.data))
-      .catch(error => console.error("Error fetching GeoJSON:", error));
-    // We also call fetchAnalyticsData here for the initial load with no filters
-    fetchAnalyticsData({});
-  }, []); // Empty array ensures this runs only once on mount
+      .catch(err => console.error("Error loading GeoJSON:", err));
 
-  // --- HANDLERS ---
-  
+    fetchAnalyticsData({});
+  }, []);
+
+  // === HANDLERS ===
   const handleLocationChange = (center, zoom) => {
     setMapLocation({ center, zoom });
   };
-  
-  // This function is called by the form after a successful submission
+
   const handleReviewSubmit = () => {
-    // Re-fetch data using the *current* active filters
     fetchAnalyticsData(filters);
   };
 
@@ -85,39 +74,37 @@ function App() {
       <ToastContainer position="top-right" autoClose={5000} theme="dark" />
       
       <div className="dashboard-container">
+
         <div className="panel left-panel">
           <h2>AI Analytics</h2>
-          {/* 4. Pass filters and setFilters to the AnalyticsPanel */}
-          <AnalyticsPanel 
-            mapData={mapData} 
+          <AnalyticsPanel
+            mapData={mapData}
             chartData={chartData}
             filters={filters}
-            setFilters={setFilters} 
+            setFilters={setFilters}
           />
         </div>
 
         <div className="panel center-panel">
-          {/* 5. Pass setFilters to the MapComponent */}
-          <MapComponent 
-            location={mapLocation} 
+          <MapComponent
+            location={mapLocation}
             geoJsonData={geoJsonData}
             mapData={mapData}
             isLoading={isLoading || !geoJsonData}
-            setFilters={setFilters} 
+            setFilters={setFilters}
           />
         </div>
 
         <div className="panel right-panel">
-          {/* 6. Make sure onReviewSubmit points to our new handler */}
-          <InputForm 
-            onLocationChange={handleLocationChange} 
-            onReviewSubmit={handleReviewSubmit} 
+          <InputForm
+            onLocationChange={handleLocationChange}
+            onReviewSubmit={handleReviewSubmit}
           />
         </div>
+
       </div>
     </div>
   );
 }
 
 export default App;
-

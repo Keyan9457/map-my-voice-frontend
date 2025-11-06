@@ -99,3 +99,17 @@
   /* We already have a @keyframes spin in App.css, so this will work */
   animation: spin 0.8s linear infinite; 
 }
+
+.form-textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #555;
+  background-color: #3e3e3e;
+  color: #fff;
+  resize: vertical;
+}
+
+button:active {
+  transform: scale(0.97);
+}

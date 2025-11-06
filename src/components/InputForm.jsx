@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './Form.css'; // We're still using this for the new button
+import './Form.css'; 
 import { locationData } from '../locationData';
 import { toast } from 'react-toastify';
 
@@ -12,35 +12,49 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
     other_area: '',
     theme: 'Healthcare',
     rating: 'Good',
-    review_text: '',
+
+    // NEW INCIDENT FIELDS
+    report_type: '',
+    comment: '',
+    latitude: null,
+    longitude: null,
   });
 
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const themes = ['Healthcare', 'Education', 'Infrastructure', 'Public Transport', 'Sanitation'];
 
-  // This state will track if we are currently fetching the user's location
   const [isLocating, setIsLocating] = useState(false);
 
-  // This effect still runs, populating the state list when the country changes
   useEffect(() => {
     setStates(Object.keys(locationData[formData.country].states));
   }, [formData.country]);
 
+  useEffect(() => {
+    const handler = (e) => {
+      setFormData((prev) => ({
+        ...prev,
+        latitude: e.detail.lat,
+        longitude: e.detail.lng,
+      }));
+    };
+    window.addEventListener("incident-location-selected", handler);
+    return () => window.removeEventListener("incident-location-selected", handler);
+  }, []);
+
   const handleCountryChange = (e) => {
     const country = e.target.value;
     const countryInfo = locationData[country];
-    setFormData({ ...formData, country: country, state: '', district: '' });
+    setFormData({ ...formData, country, state: '', district: '' });
     setStates(Object.keys(countryInfo.states));
-    setDistricts([]); 
+    setDistricts([]);
     onLocationChange([countryInfo.lat, countryInfo.lon], countryInfo.zoom);
   };
 
   const handleStateChange = (e) => {
     const state = e.target.value;
-    const countryInfo = locationData[formData.country];
-    const stateInfo = countryInfo.states[state];
-    setFormData({ ...formData, state: state, district: '' });
+    const stateInfo = locationData[formData.country].states[state];
+    setFormData({ ...formData, state, district: '' });
     setDistricts(stateInfo.districts);
     onLocationChange([stateInfo.lat, stateInfo.lon], stateInfo.zoom);
   };
@@ -50,84 +64,52 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
     setFormData((prevState) => ({ ...prevState, [name]: value }));
   };
 
-  // --- NEW FUNCTION: Geolocation & Reverse Geocoding ---
   const handleFindMyLocation = () => {
     setIsLocating(true);
-
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser.");
       setIsLocating(false);
       return;
     }
 
-    // 1. Get browser location
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
-        // 2. Pan map to location immediately
-        onLocationChange([latitude, longitude], 13); // Zoom in close (level 13)
+        onLocationChange([latitude, longitude], 13);
 
-        // 3. Call Nominatim API for reverse geocoding
-        try {
-          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`;
-          const response = await axios.get(url);
-          const address = response.data.address;
-          
-          const country = address.country;
-          const state = address.state;
-          // Nominatim uses 'city', 'county', or 'suburb' for district-level
-          const district = address.city || address.county || address.suburb;
+        setFormData((prev) => ({
+          ...prev,
+          latitude,
+          longitude,
+        }));
 
-          // 4. Try to match the address with our locationData.js
-          if (country && locationData[country]) {
-            setStates(Object.keys(locationData[country].states)); // Populate states
-            
-            if (state && locationData[country].states[state]) {
-              setDistricts(locationData[country].states[state].districts); // Populate districts
-              
-              if (district && locationData[country].states[state].districts.includes(district)) {
-                // Perfect Match: Set all 3 fields
-                setFormData({ ...formData, country, state, district });
-                toast.success("Location found and set!");
-              } else {
-                // State matched, but not district
-                setFormData({ ...formData, country, state, district: '' });
-                toast.success("State found! Please select your district.");
-              }
-            } else {
-              // Country matched, but not state
-              setFormData({ ...formData, country, state: '', district: '' });
-              toast.warn("Country found, but state is not in our list.");
-            }
-          } else {
-            toast.error("Location found, but not in our supported country list.");
-          }
-        } catch (err) {
-          console.error("Reverse geocoding failed:", err);
-          toast.error("Could not find an address for your location.");
-        } finally {
-          setIsLocating(false); // Stop loading
-        }
+        toast.success("Location detected! Click Submit to save.");
+        setIsLocating(false);
       },
-      (error) => {
-        console.error("Geolocation error:", error);
-        if (error.code === 1) { // PERMISSION_DENIED
-          toast.error("You must grant location permission to use this feature.");
-        } else {
-          toast.error("Unable to retrieve your location.");
-        }
+      () => {
+        toast.error("Unable to retrieve your location.");
         setIsLocating(false);
       }
     );
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('https://map-my-voice-backend.onrender.com/api/reviews/', formData);
+      await axios.post('http://127.0.0.1:8000/api/reviews/', formData);
       toast.success('Thank you for your review!');
       if (onReviewSubmit) onReviewSubmit();
+
+      setFormData((prev) => ({
+        ...prev,
+        theme: 'Healthcare',
+        rating: 'Good',
+        report_type: '',
+        comment: '',
+        latitude: null,
+        longitude: null,
+      }));
+
     } catch (error) {
       console.error('Error submitting data:', error);
       toast.error('Failed to submit review. Please try again.');
@@ -136,30 +118,26 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* --- NEW BUTTON ADDED HERE --- */}
+
+      {/* Add Ripple class */}
       <button 
         type="button" 
-        className="location-btn" 
+        className="location-btn ripple" 
         onClick={handleFindMyLocation} 
         disabled={isLocating}
       >
-        {isLocating ? (
-          <div className="btn-spinner"></div>
-        ) : (
-          '🎯 Find My Location'
-        )}
+        {isLocating ? <div className="btn-spinner"></div> : '🎯 Find My Location'}
       </button>
 
-      {/* Title for the next section */}
       <h2 style={{ marginTop: '20px' }}>Or Select Your Area</h2>
 
-      {/* Rest of the form is unchanged */}
       <div className="form-group">
         <label>Country</label>
         <select name="country" value={formData.country} onChange={handleCountryChange}>
           {Object.keys(locationData).map(country => <option key={country} value={country}>{country}</option>)}
         </select>
       </div>
+
       <div className="form-group">
         <label>State</label>
         <select name="state" value={formData.state} onChange={handleStateChange} required>
@@ -167,6 +145,7 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
           {states.map(state => <option key={state} value={state}>{state}</option>)}
         </select>
       </div>
+
       <div className="form-group">
         <label>District</label>
         <select name="district" value={formData.district} onChange={handleChange} required>
@@ -176,20 +155,61 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
       </div>
 
       <h2 style={{ marginTop: '30px' }}>Voice Query</h2>
+
       <div className="form-group">
         <label>Theme</label>
         <select name="theme" value={formData.theme} onChange={handleChange}>
           {themes.map(theme => <option key={theme} value={theme}>{theme}</option>)}
         </select>
       </div>
+
       <div className="form-group">
         <label>Rate</label>
         <div className="rating-buttons">
-          <button type="button" className={formData.rating === 'Good' ? 'active' : ''} onClick={() => setFormData({...formData, rating: 'Good'})}>👍 Good</button>
-          <button type="button" className={formData.rating === 'Bad' ? 'active' : ''} onClick={() => setFormData({...formData, rating: 'Bad'})}>👎 Bad</button>
+          <button type="button" className={`ripple ${formData.rating === 'Good' ? 'active' : ''}`} onClick={() => setFormData({...formData, rating: 'Good'})}>👍 Good</button>
+          <button type="button" className={`ripple ${formData.rating === 'Bad' ? 'active' : ''}`} onClick={() => setFormData({...formData, rating: 'Bad'})}>👎 Bad</button>
         </div>
       </div>
-      <button type="submit" className="submit-btn">Submit Review</button>
+
+      {formData.rating === 'Bad' && (
+        <>
+          <div className="form-group">
+            <label>Type of Issue</label>
+            <select name="report_type" value={formData.report_type} onChange={handleChange} required>
+              <option value="">-- Select Issue Type --</option>
+              <option value="Safety Hazard">Safety Hazard</option>
+              <option value="Poor Condition">Poor Condition</option>
+              <option value="Staff Misconduct">Staff Misconduct</option>
+              <option value="Service Failure">Service Failure</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Describe the Problem (Optional)</label>
+            <textarea
+              name="comment"
+              value={formData.comment}
+              onChange={handleChange}
+              rows={3}
+              className="form-textarea"
+            />
+          </div>
+
+          {formData.latitude && formData.longitude ? (
+            <p style={{ color: '#4cd137', fontSize: '0.9em' }}>
+              Location Selected: {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
+            </p>
+          ) : (
+            <p style={{ color: '#ccc', fontSize: '0.85em' }}>
+              Click the map to mark the exact incident location.
+            </p>
+          )}
+        </>
+      )}
+
+      {/* Submit button now has ripple */}
+      <button type="submit" className="submit-btn ripple">Submit Review</button>
     </form>
   );
 };

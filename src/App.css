@@ -28,18 +28,24 @@
 /* === PANEL LAYOUT & STYLES === */
 .panel {
   padding: 20px;
-  overflow-y: auto; 
-  background-color: #2f2f2f;
-  border-radius: 12px; /* Rounded corners for the 'card' look */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3); /* The drop shadow */
-  position: relative; /* For the loading overlay */
-  border: none; /* Remove old border */
-  
-  /* --- BASE PANEL ANIMATION --- */
-  /* We apply the 'fadeInUp' animation to all panels. */
-  /* It starts invisible due to 'backwards' */
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.08); /* Transparent glass base */
+  border-radius: 16px;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
   animation: fadeInUp 0.6s ease-out backwards;
 }
+
+/* Glow Hover Interaction */
+.panel:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(0, 195, 255, 0.55);
+}
+
 
 .left-panel {
   flex: 0.8;
@@ -49,13 +55,13 @@
 }
 
 .center-panel {
-  flex: 4; 
-  padding: 0; 
-  overflow: hidden; /* Important for the map's rounded corners */
-  /* --- ANIMATION DELAY --- */
-  /* The second panel waits 0.4s */
-  animation-delay: 0.4s;
+  flex: 4;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  backdrop-filter: blur(8px) saturate(140%);
 }
+
 
 .right-panel {
   flex: 1.2;
@@ -212,3 +218,55 @@ h2 {
   cursor: pointer;
 }
 
+/* === RIPPLE EFFECT === */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.6);
+  display: block;
+  border-radius: 50%;
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ripple.animate::after {
+  animation: ripple-animation 0.6s ease-out;
+}
+
+@keyframes ripple-animation {
+  0% {
+    transform: scale(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(90);
+    opacity: 0;
+  }
+}
+
+.panel h2,
+.panel label,
+.panel p,
+.panel select,
+.panel input,
+.panel textarea {
+  color: #e8e8e8 !important;
+}
+
+/* === PANEL GLIDE EFFECT === */
+.panel {
+  transform-style: preserve-3d;
+  perspective: 800px;
+}
+
+.panel.gliding {
+  transition: transform 0.12s ease-out, box-shadow 0.2s ease;
+}
