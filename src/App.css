@@ -1,3 +1,10 @@
+/*premium font*/
+* {
+  font-family: 'Inter', sans-serif;
+  letter-spacing: .2px;
+}
+
+
 /* === ROOT & APP LAYOUT === */
 #root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -269,4 +276,97 @@ h2 {
 
 .panel.gliding {
   transition: transform 0.12s ease-out, box-shadow 0.2s ease;
+}
+
+.trust-item {
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-bottom: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.trust-item:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+/* === Modern Floating Map Controls === */
+.leaflet-control {
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+  border-radius: 12px !important;
+  overflow: hidden;
+  background: rgba(40, 40, 40, 0.6) !important;
+  backdrop-filter: blur(8px);
+}
+
+.leaflet-control a, 
+.leaflet-control button {
+  background: rgba(255,255,255,0.25) !important;
+  backdrop-filter: blur(6px);
+  border: none !important;
+  color: white !important;
+}
+
+.leaflet-control a:hover,
+.leaflet-control button:hover {
+  background: rgba(255,255,255,0.45) !important;
+  transform: scale(1.08);
+  transition: 0.25s ease;
+}
+
+/* Floating Locate Me Button */
+.locate-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 22px rgba(0, 140, 255, 0.45);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: pulse-glow 2.2s infinite ease-in-out;
+}
+
+.locate-btn:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 28px rgba(0, 200, 255, 0.75);
+}
+
+/* ✨ Pulse Glow Animation */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(0, 200, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(0, 200, 255, 0.75);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(0, 200, 255, 0.3);
+  }
+}
+
+.upvote-btn {
+  background: #1aff73;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: .3s;
+}
+
+.upvote-btn:hover {
+  background: #00d45a;
+  transform: scale(1.08);
 }

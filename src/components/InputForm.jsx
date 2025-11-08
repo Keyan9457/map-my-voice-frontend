@@ -3,6 +3,7 @@ import axios from 'axios';
 import './Form.css'; 
 import { locationData } from '../locationData';
 import { toast } from 'react-toastify';
+import confetti from "canvas-confetti";
 
 const InputForm = ({ onLocationChange, onReviewSubmit }) => {
   const [formData, setFormData] = useState({
@@ -12,8 +13,6 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
     other_area: '',
     theme: 'Healthcare',
     rating: 'Good',
-
-    // NEW INCIDENT FIELDS
     report_type: '',
     comment: '',
     latitude: null,
@@ -23,7 +22,6 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const themes = ['Healthcare', 'Education', 'Infrastructure', 'Public Transport', 'Sanitation'];
-
   const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
@@ -41,6 +39,22 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
     window.addEventListener("incident-location-selected", handler);
     return () => window.removeEventListener("incident-location-selected", handler);
   }, []);
+
+  const createRipple = (e) => {
+    const button = e.currentTarget;
+    const ripple = document.createElement("span");
+    const size = Math.max(button.clientWidth, button.clientHeight);
+    const rect = button.getBoundingClientRect();
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+    ripple.classList.add("ripple");
+
+    // Remove old ripple
+    const oldRipple = button.querySelector(".ripple");
+    if (oldRipple) oldRipple.remove();
+    button.appendChild(ripple);
+  };
 
   const handleCountryChange = (e) => {
     const country = e.target.value;
@@ -64,30 +78,28 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
     setFormData((prevState) => ({ ...prevState, [name]: value }));
   };
 
-  const handleFindMyLocation = () => {
+  const handleFindMyLocation = (e) => {
+    createRipple(e);
     setIsLocating(true);
+
     if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser.");
+      toast.error("Geolocation is not supported.");
       setIsLocating(false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords;
         onLocationChange([latitude, longitude], 13);
 
-        setFormData((prev) => ({
-          ...prev,
-          latitude,
-          longitude,
-        }));
+        setFormData(prev => ({ ...prev, latitude, longitude }));
 
-        toast.success("Location detected! Click Submit to save.");
+        toast.success("Location detected!");
         setIsLocating(false);
       },
       () => {
-        toast.error("Unable to retrieve your location.");
+        toast.error("Failed to detect location.");
         setIsLocating(false);
       }
     );
@@ -95,12 +107,22 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    createRipple(e);
+
     try {
       await axios.post('http://127.0.0.1:8000/api/reviews/', formData);
       toast.success('Thank you for your review!');
+      // 🎉 Confetti Burst Animation
+      confetti({
+        particleCount: 120,
+        startVelocity: 30,
+        spread: 360,
+        origin: { x: Math.random(), y: Math.random() - 0.2 }
+    });
+
       if (onReviewSubmit) onReviewSubmit();
 
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         theme: 'Healthcare',
         rating: 'Good',
@@ -112,18 +134,17 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
 
     } catch (error) {
       console.error('Error submitting data:', error);
-      toast.error('Failed to submit review. Please try again.');
+      toast.error('Submission failed.');
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
 
-      {/* Add Ripple class */}
       <button 
         type="button" 
-        className="location-btn ripple" 
-        onClick={handleFindMyLocation} 
+        className="location-btn"
+        onClick={handleFindMyLocation}
         disabled={isLocating}
       >
         {isLocating ? <div className="btn-spinner"></div> : '🎯 Find My Location'}
@@ -134,7 +155,9 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
       <div className="form-group">
         <label>Country</label>
         <select name="country" value={formData.country} onChange={handleCountryChange}>
-          {Object.keys(locationData).map(country => <option key={country} value={country}>{country}</option>)}
+          {Object.keys(locationData).map(country => (
+            <option key={country} value={country}>{country}</option>
+          ))}
         </select>
       </div>
 
@@ -150,7 +173,7 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
         <label>District</label>
         <select name="district" value={formData.district} onChange={handleChange} required>
           <option value="">-- Select District --</option>
-          {districts.map(district => <option key={district} value={district}>{district}</option>)}
+          {districts.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
       </div>
 
@@ -166,8 +189,8 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
       <div className="form-group">
         <label>Rate</label>
         <div className="rating-buttons">
-          <button type="button" className={`ripple ${formData.rating === 'Good' ? 'active' : ''}`} onClick={() => setFormData({...formData, rating: 'Good'})}>👍 Good</button>
-          <button type="button" className={`ripple ${formData.rating === 'Bad' ? 'active' : ''}`} onClick={() => setFormData({...formData, rating: 'Bad'})}>👎 Bad</button>
+          <button type="button" className={formData.rating === 'Good' ? 'active' : ''} onClick={() => setFormData({...formData, rating: 'Good'})}>👍 Good</button>
+          <button type="button" className={formData.rating === 'Bad' ? 'active' : ''} onClick={() => setFormData({...formData, rating: 'Bad'})}>👎 Bad</button>
         </div>
       </div>
 
@@ -187,13 +210,7 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
 
           <div className="form-group">
             <label>Describe the Problem (Optional)</label>
-            <textarea
-              name="comment"
-              value={formData.comment}
-              onChange={handleChange}
-              rows={3}
-              className="form-textarea"
-            />
+            <textarea name="comment" value={formData.comment} onChange={handleChange} rows={3} className="form-textarea" />
           </div>
 
           {formData.latitude && formData.longitude ? (
@@ -208,8 +225,8 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
         </>
       )}
 
-      {/* Submit button now has ripple */}
-      <button type="submit" className="submit-btn ripple">Submit Review</button>
+      <button type="submit" className="submit-btn">Submit Review</button>
+
     </form>
   );
 };

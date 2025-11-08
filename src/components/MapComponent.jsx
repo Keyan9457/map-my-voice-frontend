@@ -2,7 +2,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import {
   MapContainer,
@@ -15,7 +15,6 @@ import {
   Popup,
   LayersControl
 } from "react-leaflet";
-
 
 function ChangeView({ center, zoom }) {
   const map = useMap();
@@ -58,17 +57,26 @@ function HeatmapLayer({ incidents }) {
 }
 
 const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters }) => {
-  const [incidents, setIncidents] = useState([]);
 
+  const [incidents, setIncidents] = useState([]);
+  const mapRef = useRef();
+
+  // ✅ **Fetch incidents + refresh every 1.5s**
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/api/incidents/")
-      .then(res => setIncidents(res.data))
-      .catch(err => console.error("Error fetching incidents:", err));
+    const loadIncidents = () => {
+      axios.get("http://127.0.0.1:8000/api/incidents/")
+        .then(res => setIncidents(res.data))
+        .catch(err => console.error("Error fetching incidents:", err));
+    };
+
+    loadIncidents();
+    const interval = setInterval(loadIncidents, 1500);
+    return () => clearInterval(interval);
   }, []);
 
   const incidentIcon = new L.Icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/535/535239.png",
-    iconSize: [28, 28],
+    iconSize: [30, 30],
   });
 
   const getColor = (score) =>
@@ -84,9 +92,7 @@ const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters })
     return {
       fillColor: getColor(score),
       weight: 1,
-      opacity: 1,
       color: 'white',
-      dashArray: '3',
       fillOpacity: 0.7
     };
   };
@@ -113,7 +119,13 @@ const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters })
   }
 
   return (
-    <MapContainer center={location.center} zoom={location.zoom} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+    <MapContainer
+      ref={mapRef}
+      center={location.center}
+      zoom={location.zoom}
+      style={{ height: '100%', width: '100%' }}
+      zoomControl={false}
+    >
       <ChangeView center={location.center} zoom={location.zoom} />
       <LocationPicker />
       <ZoomControl position="topright" />
@@ -132,25 +144,49 @@ const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters })
           <GeoJSON data={geoJsonData} style={style} onEachFeature={onEachFeature} />
         </LayersControl.Overlay>
 
+        {/* ✅ Incident Pins Rendered Correctly */}
         <LayersControl.Overlay checked name="Incident Pins">
-          <div>
+          <>
             {incidents.map((p) => (
               <Marker key={p.id} position={[p.latitude, p.longitude]} icon={incidentIcon}>
                 <Popup>
                   <strong>{p.theme}</strong><br />
                   {p.report_type}<br />
-                  <em>{p.comment}</em>
+                  <em>{p.comment}</em><br /><br />
+
+                  <button
+                    className="upvote-btn"
+                    onClick={() => {
+                      axios.post(`http://127.0.0.1:8000/api/incidents/${p.id}/upvote/`);
+                    }}
+                  >
+                    ▲ Upvote ({p.upvotes || 0})
+                  </button>
                 </Popup>
               </Marker>
             ))}
-          </div>
+          </>
         </LayersControl.Overlay>
 
-        <LayersControl.Overlay name="Incident Density Heatmap">
+        <LayersControl.Overlay name="Incident Heatmap">
           <HeatmapLayer incidents={incidents} />
         </LayersControl.Overlay>
 
       </LayersControl>
+
+      {/* 📍 Floating Locate Me Button */}
+      <button
+        className="locate-btn"
+        onClick={() => {
+          if (!navigator.geolocation || !mapRef.current) return;
+          navigator.geolocation.getCurrentPosition((pos) => {
+            mapRef.current.flyTo([pos.coords.latitude, pos.coords.longitude], 14);
+          });
+        }}
+      >
+        📍
+      </button>
+
     </MapContainer>
   );
 };

@@ -43,22 +43,49 @@
     font-weight: bold;
 }
 
+/* Premium Green Gradient Submit Button with Ripple */
 .submit-btn {
-    width: 100%;
-    padding: 12px;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    margin-top: 20px;
-    transition: background-color 0.2s;
+  position: relative;
+  overflow: hidden; /* Required for ripple */
+  width: 100%;
+  background: linear-gradient(135deg, #00d27f, #3fef9b);
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 600;
+  color: white;
+  border: none;
+  margin-top: 16px;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .3s ease;
+  box-shadow: 0 4px 12px rgba(0, 255, 170, 0.35);
 }
 
 .submit-btn:hover {
-    background-color: #218838;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 10px 24px rgba(0, 255, 170, 0.55);
+  background: linear-gradient(135deg, #3fef9b, #00d27f);
 }
+
+.submit-btn:active {
+  transform: scale(0.97);
+}
+
+/* 🌊 Ripple Effect Circle */
+.submit-btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(0);
+  animation: ripple-anim 0.5s linear;
+}
+
+@keyframes ripple-anim {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
 
 /* src/components/Form.css (add at the end) */
 
@@ -112,4 +139,20 @@
 
 button:active {
   transform: scale(0.97);
+}
+
+.upvote-btn {
+  background: rgba(255,255,255,0.1);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+
+.upvote-btn:hover {
+  transform: scale(1.08);
+  background: #00ff99;
+  color: #000;
+  border-color: #00ff99;
 }
