@@ -64,7 +64,7 @@ const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters })
   // ✅ **Fetch incidents + refresh every 1.5s**
   useEffect(() => {
     const loadIncidents = () => {
-      axios.get("http://127.0.0.1:8000/api/incidents/")
+      axios.get("https://map-my-voice-backend.onrender.com/api/incidents/")
         .then(res => setIncidents(res.data))
         .catch(err => console.error("Error fetching incidents:", err));
     };
@@ -157,7 +157,7 @@ const MapComponent = ({ location, geoJsonData, mapData, isLoading, setFilters })
                   <button
                     className="upvote-btn"
                     onClick={() => {
-                      axios.post(`http://127.0.0.1:8000/api/incidents/${p.id}/upvote/`);
+                      axios.post(`https://map-my-voice-backend.onrender.com/api/incidents/${p.id}/upvote/`)
                     }}
                   >
                     ▲ Upvote ({p.upvotes || 0})

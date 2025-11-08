@@ -110,7 +110,7 @@ const InputForm = ({ onLocationChange, onReviewSubmit }) => {
     createRipple(e);
 
     try {
-      await axios.post('http://127.0.0.1:8000/api/reviews/', formData);
+      await axios.post('https://map-my-voice-backend.onrender.com/api/reviews/', formData);
       toast.success('Thank you for your review!');
       // 🎉 Confetti Burst Animation
       confetti({
