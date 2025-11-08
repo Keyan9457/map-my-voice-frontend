@@ -2,30 +2,31 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./LiveFeed.css";
 
+const API_BASE = "https://map-my-voice-backend.onrender.com/api";
+
 export default function LiveFeed() {
-  const [feed, setFeed] = useState([]);
+  const [feeds, setFeeds] = useState([]);
 
   useEffect(() => {
-    const loadFeed = () => {
-      axios.get("https://map-my-voice-backend.onrender.com/api/latest-reviews/")
-        .then(res => setFeed(res.data))
-        .catch(err => console.log("Feed error:", err));
+    const fetchData = () => {
+      axios.get(`${API_BASE}/incidents/`).then(res => {
+        setFeeds(res.data.slice(-10).reverse()); // show latest first
+      });
     };
 
-    loadFeed();
-    const interval = setInterval(loadFeed, 6000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // refresh live
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="live-feed-container">
-      <h3 className="feed-title">Live Citizen Voices</h3>
-
-      <div className="feed-scroll">
-        {feed.map((item, i) => (
-          <div key={i} className="feed-bubble">
-            <span className="dot">●</span>
-            <strong>{item.theme}</strong> – "{item.comment || "No additional notes"}"
+    <div className="live-feed-box">
+      <h3>Live Citizen Voices</h3>
+      <div className="live-feed-list">
+        {feeds.map((i, idx) => (
+          <div key={idx} className="live-feed-item">
+            <span className={i.report_type === "Bad" ? "red" : "green"}>●</span>
+            <strong>{i.theme}</strong> – "{i.comment || "No additional notes"}"
           </div>
         ))}
       </div>
